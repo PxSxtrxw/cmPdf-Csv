@@ -10,6 +10,7 @@ Para utilizar este programa, asegúrate de instalar la librería PyPDF2. Puedes 
 pip install PyPDF2
 ```
 
-##Funcionamiento del Programa
+## Funcionamiento del Programa
+
 El archivo index.py extrae datos del archivo pdf.pdf y los guarda en forma de tabla en el archivo salida.csv.
 
