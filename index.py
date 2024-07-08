@@ -14,62 +14,54 @@ def extract_text_from_pdf(pdf_path):
 def parse_text(text):
     lines = text.split('\n')
     parsed_data = []
-    current_codes = []
-    current_descriptions = []
+    current_code = None
+    current_description = []
 
     for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
         # Tratar de emparejar líneas con el formato de código seguido de descripción
         match = re.match(r'^(\d{1,4}\s?\d*)\s+(.*)$', line)
         if match:
-            if current_codes and current_descriptions:
-                # Guardar los códigos y descripciones actuales si hay información previa
-                for code in current_codes:
-                    parsed_data.append({'CÓDIGO': code, 'DESCRIPCIÓN': ' '.join(current_descriptions).strip()})
-                current_codes = []
-                current_descriptions = []
-            
+            if current_code is not None:
+                # Guardar el código y descripción actual si hay información previa
+                parsed_data.append({'CÓDIGO': current_code, 'DESCRIPCIÓN': ' '.join(current_description).strip()})
             # Establecer nuevo código y descripción
             current_code = match.group(1).replace(' ', '')  # Unificar el código eliminando espacios
-            current_description = match.group(2).strip()
+            current_description = [match.group(2).strip()]
             
-            # Dividir la línea en partes usando coma como separador y limpiar los espacios
-            parts = [part.strip() for part in re.split(r'(?<=\d)\s+(?=\D)', current_description)]
+            # Buscar y extraer números de la descripción para unificar con el código
+            description_numbers = re.findall(r'(\d+)', current_description[0])
+            if description_numbers:
+                for number in description_numbers:
+                    current_code += number
             
-            if len(parts) > 1:
-                current_code = current_code[:4] + parts[0]
-                current_description = parts[1]
-            
-            # Guardar el código y descripción
-            parsed_data.append({'CÓDIGO': current_code, 'DESCRIPCIÓN': current_description})
+            # Eliminar los números de la descripción
+            current_description[0] = re.sub(r'\d+', '', current_description[0]).strip()
             
         else:
             match_general = re.match(r'^([A-Z])\s+(.*)$', line)
             if match_general:
-                if current_codes and current_descriptions:
-                    # Guardar los códigos y descripciones actuales si hay información previa
-                    for code in current_codes:
-                        parsed_data.append({'CÓDIGO': code, 'DESCRIPCIÓN': ' '.join(current_descriptions).strip()})
-                    current_codes = []
-                    current_descriptions = []
-                
+                if current_code is not None:
+                    # Guardar el código y descripción actual si hay información previa
+                    parsed_data.append({'CÓDIGO': current_code, 'DESCRIPCIÓN': ' '.join(current_description).strip()})
                 # Establecer nuevo código y descripción general
                 current_code = match_general.group(1)
-                current_description = match_general.group(2).strip()
-                parsed_data.append({'CÓDIGO': current_code, 'DESCRIPCIÓN': current_description})
-                
+                current_description = [match_general.group(2).strip()]
             else:
-                # Agregar la línea a la descripción actual
-                current_descriptions.append(line.strip())
+                # Si no hay coincidencia, agregar la línea a la descripción actual
+                current_description.append(line.strip())
 
-    # Asegurarse de guardar la última línea procesada si hay códigos y descripciones restantes
-    if current_codes and current_descriptions:
-        for code in current_codes:
-            parsed_data.append({'CÓDIGO': code, 'DESCRIPCIÓN': ' '.join(current_descriptions).strip()})
+    # Asegurarse de guardar la última línea procesada
+    if current_code is not None:
+        parsed_data.append({'CÓDIGO': current_code, 'DESCRIPCIÓN': ' '.join(current_description).strip()})
 
     return parsed_data
 
 def save_to_csv(data, csv_path):
-    with open(csv_path, mode='w', newline='', encoding='utf-8') as file:
+    with open(csv_path, mode='w', newline='', encoding='utf-8-sig') as file:
         fieldnames = ['CÓDIGO', 'DESCRIPCIÓN']
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
